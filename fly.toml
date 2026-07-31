@@ -1,0 +1,47 @@
+# ============================================================
+#  fly.toml — laravel-react-starter テンプレート
+#
+#  版の正本はこのファイルの [build.args]。
+#  版を変えるときはここの数字と Dockerfile の ARG 既定値を
+#  両方直す（検品スクリプトが一致を確認する）。
+# ============================================================
+
+app = 'CHANGEME-app-name'
+primary_region = 'nrt'
+console_command = 'php /var/www/html/artisan tinker'
+
+[build]
+  [build.args]
+    PHP_VERSION = '8.4'
+    NODE_VERSION = '24'
+
+[deploy]
+  release_command = 'php /var/www/html/artisan migrate --force'
+
+[env]
+  APP_ENV = 'production'
+  LOG_CHANNEL = 'stderr'
+  LOG_LEVEL = 'info'
+  LOG_STDERR_FORMATTER = 'Monolog\Formatter\JsonFormatter'
+  SESSION_DRIVER = 'cookie'
+  SESSION_SECURE_COOKIE = 'true'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+  [[http_service.checks]]
+    grace_period = '10s'
+    interval = '15s'
+    method = 'GET'
+    timeout = '5s'
+    path = '/up'
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1

@@ -1,0 +1,33 @@
+# --- 開発の産物 ---
+node_modules
+vendor
+.git
+.github
+tests
+
+# --- 秘密・環境依存 ---
+.env
+.env.*
+
+# --- ローカルDB ---
+database/*.sqlite
+database/*.sqlite.*
+
+# --- ローカルのキャッシュ（イメージ内で作り直す） ---
+bootstrap/cache/*.php
+storage/framework/views/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/logs/*
+
+# --- ビルド産物（イメージ内で作り直す） ---
+public/build
+public/hot
+
+# --- Wayfinder の生成物（毎ビルド再生成される） ---
+resources/js/actions
+resources/js/routes
+resources/js/wayfinder
+
+# --- WSL のゴミ ---
+*:Zone.Identifier

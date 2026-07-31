@@ -1,11 +1,13 @@
+# 改行は常に LF。Windows 側の VSCode で開いても CRLF にしない。
 * text=auto eol=lf
 
-*.blade.php diff=html
-*.css diff=css
-*.html diff=html
-*.md diff=markdown
-*.php diff=php
+# シェルスクリプトは CRLF だとコンテナ内で起動できない
+*.sh  text eol=lf
 
-CHANGELOG.md export-ignore
-README.md export-ignore
-.github/workflows/browser-tests.yml export-ignore
+# バイナリは変換禁止（gpg鍵が壊れるとイメージがビルドできない）
+*.gpg   binary
+*.woff  binary
+*.woff2 binary
+*.png   binary
+*.jpg   binary
+*.ico   binary
