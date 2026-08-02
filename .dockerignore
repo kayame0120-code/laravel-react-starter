@@ -32,6 +32,5 @@ resources/js/wayfinder
 # --- WSL のゴミ ---
 *:Zone.Identifier
 # ローカル開発用SQLiteをイメージに焼き込まない
-database/*.sqlite
 database/*.sqlite-shm
 database/*.sqlite-wal
