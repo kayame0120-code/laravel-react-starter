@@ -28,3 +28,8 @@ yarn-error.log
 /.vscode
 /.zed
 fly.probe.toml
+
+# ローカル開発用SQLite（本番は Fly Volume 上の /data/database.sqlite）
+/database/*.sqlite
+/database/*.sqlite-shm
+/database/*.sqlite-wal

@@ -4,6 +4,12 @@
 #  版の正本はこのファイルの [build.args]。
 #  版を変えるときはここの数字と Dockerfile の ARG 既定値を
 #  両方直す（検品スクリプトが一致を確認する）。
+#
+#  DBは SQLite。実体は Fly Volume 上の /data/database.sqlite。
+#  ボリュームはマシンごとに独立して存在するため、マシンを2台にすると
+#  DBが2つに割れて別々のデータになる。このアプリは1台で運用する。
+#      初回      fly deploy --ha=false
+#      増えたら  fly scale count 1
 # ============================================================
 
 app = 'CHANGEME-app-name'
@@ -15,16 +21,33 @@ console_command = 'php /var/www/html/artisan tinker'
     PHP_VERSION = '8.4'
     NODE_VERSION = '24'
 
-[deploy]
-  release_command = 'php /var/www/html/artisan migrate --force'
+# [deploy] の release_command は置かない。
+# release_command が作る一時マシンにはボリュームが付かず /data に到達できない
+# （Fly公式が「ビルド時」「release_command の一時マシン」でボリュームは使えないと明記）。
+# マイグレーションは .fly/scripts/00-database.sh の起動時実行に移した。
+# 「デプロイしたのにテーブルが無い」を防ぐ役割はそちらが引き継ぐ。
 
 [env]
   APP_ENV = 'production'
   LOG_CHANNEL = 'stderr'
   LOG_LEVEL = 'info'
   LOG_STDERR_FORMATTER = 'Monolog\Formatter\JsonFormatter'
-  SESSION_DRIVER = 'cookie'
   SESSION_SECURE_COOKIE = 'true'
+
+  # --- SQLite ---
+  DB_CONNECTION = 'sqlite'
+  DB_DATABASE = '/data/database.sqlite'
+
+  # SQLite への書き込みを増やさないため、セッション・キャッシュ・キューはDBに置かない。
+  # キューを database にすると、ゼロスケール中はワーカーが居らずジョブが永久に滞留する。
+  SESSION_DRIVER = 'cookie'
+  CACHE_STORE = 'file'
+  QUEUE_CONNECTION = 'sync'
+
+[mounts]
+  source = 'data'
+  destination = '/data'
+  initial_size = '1gb'
 
 [http_service]
   internal_port = 8080

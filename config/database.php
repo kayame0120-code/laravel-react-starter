@@ -32,16 +32,29 @@ return [
 
     'connections' => [
 
+        /*
+        | SQLite の既定値について（このテンプレートの本番DB）
+        |
+        | journal_mode  WAL       読みが書きをブロックしない。既定の DELETE では
+        |                         php-fpm の子プロセス同士が読み書きで競合する。
+        | synchronous   NORMAL    WAL と組み合わせたときの標準。毎コミットの fsync を省く。
+        |                         失うのは「OSごと落ちた直前の数コミット」であり、DBは壊れない。
+        | busy_timeout  5000ms    ロック待ちで即座に諦めず待つ。0 だと SQLITE_BUSY が即エラーになる。
+        | transaction_mode
+        |               IMMEDIATE 読み取りで始めたトランザクションが途中で書き込みへ昇格するとき、
+        |                         DEFERRED では相互に待ち合って SQLITE_BUSY で落ちる経路がある。
+        |                         最初から書き込みロックを取る。
+        */
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
-            'journal_mode' => null,
-            'synchronous' => null,
-            'transaction_mode' => 'DEFERRED',
+            'busy_timeout' => env('DB_BUSY_TIMEOUT', 5000),
+            'journal_mode' => env('DB_JOURNAL_MODE', 'WAL'),
+            'synchronous' => env('DB_SYNCHRONOUS', 'NORMAL'),
+            'transaction_mode' => env('DB_TRANSACTION_MODE', 'IMMEDIATE'),
         ],
 
         'mysql' => [
@@ -149,7 +162,7 @@ return [
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
-            'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'-database-'),
+            'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')) . '-database-'),
             'persistent' => env('REDIS_PERSISTENT', false),
         ],
 
