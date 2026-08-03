@@ -2,18 +2,23 @@
 # ============================================================
 #  laravel-react-starter / 本番イメージ
 #
-#  版の正本は fly.toml の [build.args]。
-#  下の ARG 既定値は素の `docker build` 用の保険であり、
-#  fly.toml と必ず同じ数字にする（検品スクリプトで照合する）。
+#  版の正本は下の ENV PHP_VERSION / ENV NODE_VERSION。
+#  このファイルの中でしか定義されておらず、他の場所には存在しない。
+#
+#  ARG を使わない理由：
+#    ARG は「外から --build-arg で渡せる」ための構文である。
+#    渡せるということは、意図しない値が渡って気づけない、ということでもある。
+#    実際、fly.toml と Dockerfile の両方に 8.4 と書いてあるのに
+#    ビルドが 8.3 で走り、原因を特定できないという事故が起きた。
+#    ENV は --build-arg で上書きできない。版はこの2行でしか変わらない。
 # ============================================================
-ARG PHP_VERSION=8.4
-ARG NODE_VERSION=24
 
 FROM ubuntu:22.04 AS base
 LABEL fly_launch_runtime="laravel"
 
-ARG PHP_VERSION
-ARG NODE_VERSION
+# --- 版の正本（ここだけを直す） ---
+ENV PHP_VERSION=8.4 \
+    NODE_VERSION=24
 
 ENV DEBIAN_FRONTEND=noninteractive \
     COMPOSER_ALLOW_SUPERUSER=1 \
@@ -34,28 +39,36 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY .fly/php/ondrej_ubuntu_php.gpg /etc/apt/trusted.gpg.d/ondrej_ubuntu_php.gpg
-ADD .fly/php/packages/${PHP_VERSION}.txt /tmp/php-packages.txt
 
-# --- PHP ${PHP_VERSION} ---
+# ADD は ENV を展開できないため、パッケージ一覧はディレクトリごと入れてから選ぶ。
+COPY .fly/php/packages/ /tmp/php-packages/
+
+# --- PHP ---
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gnupg2 ca-certificates git-core curl zip unzip \
-    rsync vim-tiny htop sqlite3 nginx supervisor cron \
+    rsync vim-tiny htop sqlite3 nginx supervisor \
     && ln -sf /usr/bin/vim.tiny /etc/alternatives/vim \
     && ln -sf /etc/alternatives/vim /usr/bin/vim \
     && echo "deb http://ppa.launchpad.net/ondrej/php/ubuntu jammy main" > /etc/apt/sources.list.d/ondrej-ubuntu-php.list \
     && apt-get update \
-    && apt-get -y --no-install-recommends install $(cat /tmp/php-packages.txt) \
+    && apt-get -y --no-install-recommends install $(cat /tmp/php-packages/${PHP_VERSION}.txt) \
     && ln -sf /usr/sbin/php-fpm${PHP_VERSION} /usr/sbin/php-fpm \
     && php -v \
     && mkdir -p /var/www/html/public && echo "index" > /var/www/html/public/index.php \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
+    && rm -rf /var/lib/apt/lists/* /tmp/php-packages /tmp/* /var/tmp/* /usr/share/doc/*
 
-# --- Node ${NODE_VERSION} ---
+# --- Node ---
 RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && node -v && npm -v \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 版が意図どおりに焼けたことを、ビルドの中で確かめてから先へ進む。
+# 食い違ったままイメージが出来上がると、composer install で初めて露見して原因が読めない。
+RUN php -v | grep -q "PHP ${PHP_VERSION}" \
+    && node -v | grep -q "^v${NODE_VERSION}\." \
+    && echo "version check passed: PHP ${PHP_VERSION} / Node ${NODE_VERSION}"
 
 COPY .fly/nginx/ /etc/nginx/
 COPY .fly/fpm/ /etc/php/${PHP_VERSION}/fpm/
@@ -85,7 +98,9 @@ RUN npm ci && npm run build && rm -rf node_modules
 # chown は単独 RUN にする（前段の失敗でスキップされると www-data が書けず全リクエスト500になる）
 RUN chown -R www-data:www-data /var/www/html
 
-RUN printf 'MAILTO=""\n* * * * * www-data /usr/bin/php /var/www/html/artisan schedule:run\n' > /etc/cron.d/laravel
+# cron は入れない。スケジューラは外部から HTTP で起こす（README 参照）。
+# auto_stop_machines を使う構成では、マシンが眠っている間コンテナ内 cron も眠るため、
+# 定時実行は原理的に成立しない。動かないものを置くと「動くはず」と誤解される。
 
 EXPOSE 8080
 ENTRYPOINT ["/entrypoint"]

@@ -1,9 +1,9 @@
 # ============================================================
 #  fly.toml — laravel-react-starter テンプレート
 #
-#  版の正本はこのファイルの [build.args]。
-#  版を変えるときはここの数字と Dockerfile の ARG 既定値を
-#  両方直す（検品スクリプトが一致を確認する）。
+#  版（PHP / Node）はこのファイルでは扱わない。正本は Dockerfile の ENV。
+#  ここに [build.args] を書き戻さない ── 同じ数字が2箇所に散ると、
+#  実際にどちらが効いたのかがログを見るまで分からなくなる。
 #
 #  DBは SQLite。実体は Fly Volume 上の /data/database.sqlite。
 #  ボリュームはマシンごとに独立して存在するため、マシンを2台にすると
@@ -15,11 +15,6 @@
 app = 'CHANGEME-app-name'
 primary_region = 'nrt'
 console_command = 'php /var/www/html/artisan tinker'
-
-[build]
-  [build.args]
-    PHP_VERSION = '8.4'
-    NODE_VERSION = '24'
 
 # [deploy] の release_command は置かない。
 # release_command が作る一時マシンにはボリュームが付かず /data に到達できない
@@ -52,6 +47,9 @@ console_command = 'php /var/www/html/artisan tinker'
 [http_service]
   internal_port = 8080
   force_https = true
+  # 'suspend' は復帰時にメモリ像を丸ごと確保し直すため、
+  # ホストが混んでいると mem_overcommit_exceeded で起きられなくなる。
+  # 'stop' は通常の起動経路を通るので、その門に引っかからない。
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
